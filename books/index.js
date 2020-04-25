@@ -1,5 +1,20 @@
-const { ApolloServer, gql } = require('apollo-server')
+const { ApolloServer, gql,UserInputError } = require('apollo-server')
+const database = require('mongoose')
+
+const Author = require('./model/Author')
+const Book = require('./model/Book')
+
 const uuid = require('uuid/v1')
+
+
+database.set('useFindAndModify', false)
+database.set('useCreateIndex', true)
+
+const databseuri = 'mongodb+srv://dbuser:lr94GxPg7HthnbGU@cluster0-yydjv.mongodb.net/booklist?retryWrites=true&w=majority'
+
+database.connect(databseuri, { useNewUrlParser: true, useUnifiedTopology: true })
+
+
 
 let authors = [
   {
@@ -95,9 +110,10 @@ const typeDefs = gql`
 
     type Book {
       title : String!
-      author: String!
+      author: Author!
       published: Int!
       genres: [String!]!
+      id: ID!
     }
 
     type Author {
@@ -110,10 +126,10 @@ const typeDefs = gql`
     type Mutation {
       addBook(
         title: String!
-        author: String!
+        author:  String!
         published: Int!
-        genres: [String!]!
-      ): Book
+        genres: [String!]!      
+      ): Book 
 
         editAuthor(
           name: String
@@ -126,66 +142,79 @@ const typeDefs = gql`
 
 const resolvers = {
   Query: {
-    bookCount: () => books.length,
-    authorCount: () => authors.length,
-    allBooks: (root, args) => {
+    bookCount:async () => {
+      
+      
+      const dbbooks =await Book.find()
 
-      if(args.author && args.genre) {
-        return books.filter(book => book.author === args.author && book.genres.includes(args.genre))
-      }
-      else if(!args.author && args.genre) {
-
-        return  books.filter(book => book.genres.includes(args.genre))
-      }
-      else if(args.author && !args.genre){
-
-        return books.filter(book => book.author === args.author)
-      }
-
-      return books
-    
+      return dbbooks.length
     },
-    allAuthors: () => authors
+    authorCount:async () => {
+
+      const dbauthors =await Author.find()
+
+      return dbauthors.length
+
+    },
+    allBooks:async (root, args) => {
+
+      if(args.genre) {
+        return await Book.find({ genres: { $in: [args.genre] }  }).populate('author', {name:1,born: 1}) 
+      }
+
+      return await Book.find().populate('author', {name:1,born: 1}) 
+
+    },
+    allAuthors:async () => {
+      return await Author.find()
+    }
   },
   Author: {
-    bookCount: (root) => {
-      const authorbooks = books.filter(book => book.author === root.name)
-      return authorbooks.length
+    bookCount:async (root) => {
+
+      const dbBooks =await Book.find({ author: { $in: [root.id] }  })
+      return dbBooks.length
+
     }
   },
   Mutation: {
-    addBook: (root, args) => {
-      const book = { ...args, id: uuid() }
+    addBook: async (root, args) => {
 
-      existingauthor = authors.find(author => author.name === book.author)
+      const book = new Book({ ...args })
+
+      const existingauthor = await Author.findOne({ name: args.author })
 
       if(!existingauthor) {
          
-       const newauthor= {
-          name: book.author,
-          id: uuid(),
-          born: null
+        const authorObjt = new Author({ name:args.author ,born: null})
+
+        try {
+          const author = await authorObjt.save()
         }
+        catch(error) {
+          throw new UserInputError(error.message)
+        }
+        book.author= author.id
 
-        authors=authors.concat(newauthor)
-
+       
+      }
+      else {
+        book.author=existingauthor.id
+      }
+      try {
+        const dbbook = await book.save() 
+      }
+      catch(error) {
+        throw new UserInputError(error.message)
       }
 
-      books = books.concat(book)
-      return book
+      return await Book.findById(dbbook.id).populate('author', {name:1,born: 1})
     },
-    editAuthor: (root, args) => {
+    editAuthor: async(root, args) => {
 
-      const author = authors.find(author => author.name === args.name)
-      if (!author) {
-        return null
-      }
-
-      const authorBirthupdated = { ...author, born: args.setBornTo }
-      const authorsWithoutOldAuthor = authors.filter(author => author.name !== args.name)
-      authors=authorsWithoutOldAuthor.concat(authorBirthupdated)
-
-      return authorBirthupdated
+      return await Author.findOneAndUpdate({ name: args.name }, { born: args.setBornTo }, {
+        new: true
+      });
     }
   }
 }
