@@ -1,8 +1,10 @@
-const { ApolloServer, gql,UserInputError } = require('apollo-server')
+const { ApolloServer, gql,UserInputError,AuthenticationError } = require('apollo-server')
 const database = require('mongoose')
+const jsonwebtoken = require('jsonwebtoken')
 
 const Author = require('./model/Author')
 const Book = require('./model/Book')
+const User = require('./model/User')
 
 const uuid = require('uuid/v1')
 
@@ -11,6 +13,7 @@ database.set('useFindAndModify', false)
 database.set('useCreateIndex', true)
 
 const databseuri = 'mongodb+srv://dbuser:lr94GxPg7HthnbGU@cluster0-yydjv.mongodb.net/booklist?retryWrites=true&w=majority'
+const secret = 'SecretKey'
 
 database.connect(databseuri, { useNewUrlParser: true, useUnifiedTopology: true })
 
@@ -106,6 +109,7 @@ const typeDefs = gql`
     authorCount: Int!
     allBooks(author: String,genre: String):  [Book!]!
     allAuthors: [Author!]!
+    me: User
   }
 
     type Book {
@@ -123,6 +127,16 @@ const typeDefs = gql`
       bookCount: Int
     }
 
+    type User {
+      username: String!
+      favoriteGenre: String!
+      id: ID!
+    }
+
+    type Token {
+      value: String!
+    }
+
     type Mutation {
       addBook(
         title: String!
@@ -136,6 +150,15 @@ const typeDefs = gql`
           setBornTo: Int
         ): Author
 
+        createUser(
+          username: String!
+          favoriteGenre: String!
+        ): User
+
+        login(
+          username: String!
+          password: String!
+        ): Token
     }
 
 `
@@ -167,6 +190,9 @@ const resolvers = {
     },
     allAuthors:async () => {
       return await Author.find()
+    },
+    me: (root, args,  { userSession }) => {
+      return userSession
     }
   },
   Author: {
@@ -175,11 +201,19 @@ const resolvers = {
       const dbBooks =await Book.find({ author: { $in: [root.id] }  })
       return dbBooks.length
 
-    }
+    },
+    
   },
   Mutation: {
-    addBook: async (root, args) => {
+    addBook: async (root, args, { userSession }) => {
 
+      
+      if (!userSession) {
+        throw new AuthenticationError("User have not been authenticated yet")
+      }
+      
+
+      let dbbook= null
       const book = new Book({ ...args })
 
       const existingauthor = await Author.findOne({ name: args.author })
@@ -202,7 +236,7 @@ const resolvers = {
         book.author=existingauthor.id
       }
       try {
-        const dbbook = await book.save() 
+         dbbook = await book.save() 
       }
       catch(error) {
         throw new UserInputError(error.message)
@@ -210,18 +244,71 @@ const resolvers = {
 
       return await Book.findById(dbbook.id).populate('author', {name:1,born: 1})
     },
-    editAuthor: async(root, args) => {
+    editAuthor: async(root, args, { userSession }) => {
+
+      if (!userSession) {
+        throw new AuthenticationError("User have not been authenticated yet")
+      }
 
       return await Author.findOneAndUpdate({ name: args.name }, { born: args.setBornTo }, {
         new: true
       });
+    },
+
+    createUser: async(root, args) => {
+      
+      const user = new User({ ...args })
+      try {
+        return await user.save() 
+      }
+      catch(error) {
+        throw new UserInputError(error.message)
+      }
+    },
+
+    login: async (root, args) => {
+      const user = await User.findOne({ username: args.username })
+      
+      if (!user) {
+        throw new UserInputError("Username was incorrect")
+      }
+
+      if(args.password !== 'password' ) {
+        throw new UserInputError("Password was incorrect")
+      } 
+
+
+      return { value: jsonwebtoken.sign({username: user.username,id: user.id}, secret) }
+
     }
+
   }
 }
 
 const server = new ApolloServer({
   typeDefs,
   resolvers,
+  context: async ({ req }) => {
+    
+    if(req)
+    {
+      authorization = req.headers.authorization
+
+      if(authorization  && authorization.startsWith('bearer ')) {
+
+        const encodedToken= authorization.substring(7)
+
+        const decodedtok=jsonwebtoken.verify(encodedToken, secret )
+
+        const userSession = await User.findById(decodedtok.id)
+
+        return { userSession }
+
+      }
+
+    }
+
+  }
 })
 
 server.listen().then(({ url }) => {
