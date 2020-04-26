@@ -4,11 +4,12 @@ import React, { useState } from 'react'
 
 
 
-const LoginForm = ({show,setjsToken}) => {
+const LoginForm = ({show,setjstoken,setpage,makelogin}) => {
  
 
     const [username, setUsername] = useState('')
     const [password, setPassword] = useState('')
+
 
     if (!show) {
         return null
@@ -18,8 +19,10 @@ const LoginForm = ({show,setjsToken}) => {
     
         event.preventDefault()
 
+        makelogin({  variables: { username, password} })
+
+        setpage('books')
       
-        // aseta token
 
     }
 
@@ -40,6 +43,7 @@ const LoginForm = ({show,setjsToken}) => {
                 onChange={({ target }) => setPassword(target.value)}
               />
             </div>
+            <button type='submit'>Login</button>
           </form>
         </div>
       )

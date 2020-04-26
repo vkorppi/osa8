@@ -1,12 +1,16 @@
 
-import React, { useState } from 'react'
+import React, { useState,useEffect } from 'react'
 import Authors from './components/Authors'
 import Books from './components/Books'
 import NewBook from './components/NewBook'
-import { gql, useQuery } from '@apollo/client'
+import LoginForm from './components/Login'
+import { gql, useQuery,useMutation } from '@apollo/client'
+
 
 const App = () => {
   const [page, setPage] = useState('authors')
+  const [jsToken, setjsToken] = useState(null)
+
 
   const ALLAUTHORS = gql`
   query {
@@ -28,24 +32,46 @@ query {
   }
 }
 `
+const LOGIN = gql`
+mutation makeLogin($username: String!, $password: String!) {
+  login(username: $username, password: $password
+  ) {
+    value
+  }
+}
+`
 
-
+const [ makeLogin, result ] = useMutation(LOGIN)
 const allauthors = useQuery(ALLAUTHORS)
 const allbooks = useQuery(ALLBOOKS)
+
+useEffect(() => {
+
+      const newtoken = result.data ? result.data.login.value : null
+      setjsToken(newtoken)     
+      localStorage.setItem('jstoken', newtoken) 
+
+  },[result.data]) 
 
   return (
     <div>
       <div>
         <button onClick={() => setPage('authors')}>authors</button>
         <button onClick={() => setPage('books')}>books</button>
-        <button onClick={() => setPage('add')}>add book</button>
+
+        { jsToken ? <button onClick={() => setPage('add')}>add book</button> : null}
+
+        { !jsToken ? <button onClick={() => setPage('login')}>Login</button>: null}
+
+        { jsToken ? <button onClick={() => {setjsToken(null);setPage('books')}}>Logout</button>: null}
+        
       </div>
 
       <Authors
         show={page === 'authors'}
-        result={allauthors}
+        result={allauthors} jstoken={jsToken}
       />
-
+  
       <Books
         show={page === 'books'}
         result={allbooks}
@@ -53,6 +79,10 @@ const allbooks = useQuery(ALLBOOKS)
 
       <NewBook
         show={page === 'add'}
+      />
+
+    <LoginForm
+        show={page === 'login'} setjstoken={setjsToken} setpage={setPage} makelogin={makeLogin}
       />
 
     </div>

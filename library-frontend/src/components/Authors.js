@@ -80,6 +80,10 @@ const Authors = (props) => {
           )}
         </tbody>
       </table>
+
+      {
+        props.jstoken ?
+        <div>
       <div>
         <h2>Set date of birth for author</h2>
       </div>
@@ -98,6 +102,10 @@ const Authors = (props) => {
       <button type='submit'>Update birth date</button>
       </div>
       </form>
+      </div>
+      : null
+    }
+
     </div>
  
   )
