@@ -12,6 +12,15 @@ query {
   }
 }
 `
+const ALLAUTHORS = gql`
+query {
+  allAuthors {
+    name
+    born
+    bookCount
+  }
+}
+`
 
 const CREATE_BOOK = gql`
 mutation createBook($title: String!, $author: String!, $published: Int!, $genres: [String!]!) {
@@ -32,7 +41,7 @@ const NewBook = (props) => {
   const [genre, setGenre] = useState('')
   const [genres, setGenres] = useState([])
 
-  const [ createBook ] = useMutation(CREATE_BOOK,{refetchQueries: [ { query: ALLBOOKS } ]  })
+  const [ createBook ] = useMutation(CREATE_BOOK,{refetchQueries: [ { query: ALLBOOKS },{ query: ALLAUTHORS } ]  })
 
 
 
