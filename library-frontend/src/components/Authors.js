@@ -3,6 +3,7 @@ import React, { useState } from 'react'
 import { gql, useMutation } from '@apollo/client'
 import Select from 'react-select';
 
+
 export const UPDATEBIRTHDATE = gql`
   mutation editAuthor($name: String!, $setBornTo: Int!) {
     editAuthor(name: $name, setBornTo: $setBornTo)  {
@@ -28,7 +29,9 @@ const Authors = (props) => {
   const [name, setName] = useState('')
   const [option, setOption] = useState(null)
 
-  const [ editAuthor ] = useMutation(UPDATEBIRTHDATE,{refetchQueries: [ { query: ALLAUTHORS } ]  })
+  const [ editAuthor ] = useMutation(UPDATEBIRTHDATE,{
+    refetchQueries: [ { query: ALLAUTHORS } ]  ,
+       onError: (error) => {console.log(error.message)}})
 
   if (!props.show) {
     return null

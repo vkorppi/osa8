@@ -208,8 +208,6 @@ const resolvers = {
     addBook: async (root, args, { userSession }) => {
 
       
-
-      console.log('debug1')
       
       if (!userSession) {
         throw new AuthenticationError("User have not been authenticated yet")
@@ -225,7 +223,7 @@ const resolvers = {
 
         let author=null
       
-        console.log('debug2')
+       
          
         const authorObjt = new Author({ name:args.author ,born: null})
 
@@ -236,11 +234,11 @@ const resolvers = {
           throw new UserInputError(error.message)
         }
         
-        console.log('debug3')
+      
 
         book.author= author.id
 
-        console.log('debug4')
+      
        
       }
       else {
