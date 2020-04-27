@@ -4,12 +4,17 @@ import Authors from './components/Authors'
 import Books from './components/Books'
 import NewBook from './components/NewBook'
 import LoginForm from './components/Login'
-import { gql, useQuery,useMutation } from '@apollo/client'
+import Recommended from './components/Recommended'
+
+import { gql, useQuery,useMutation,useLazyQuery  } from '@apollo/client'
 
 
 const App = () => {
+
   const [page, setPage] = useState('authors')
   const [jsToken, setjsToken] = useState(null)
+  const [filter, setFilter] = useState(null)
+
 
 
   const ALLAUTHORS = gql`
@@ -21,6 +26,9 @@ const App = () => {
     }
   }
 `
+
+
+
 const ALLBOOKS = gql`
 query {
   allBooks { 
@@ -29,21 +37,75 @@ query {
       name
     }
     published
+    genres
   }
 }
 `
+const FILTEREDDBOOKS = gql`
+query filter($genre: String){
+  allBooks(genre: $genre) { 
+    title 
+    author {
+      name
+    }
+    published
+    genres
+  }
+}
+`
+
+
 const LOGIN = gql`
 mutation makeLogin($username: String!, $password: String!) {
-  login(username: $username, password: $password
-  ) {
+  login(username: $username, password: $password) 
+  {
     value
   }
 }
 `
 
+
+
 const [ makeLogin, result ] = useMutation(LOGIN)
 const allauthors = useQuery(ALLAUTHORS)
 const allbooks = useQuery(ALLBOOKS)
+
+const [getBooks, fetchedBooks] = useLazyQuery(ALLBOOKS, { fetchPolicy: "network-only" }) 
+
+const [filterbooks, filteredBooks] = useLazyQuery(FILTEREDDBOOKS, { fetchPolicy: "network-only" }) 
+
+const ME = gql`
+query {
+    me {
+    favoriteGenre
+  }
+}
+`
+
+const [getUser, user] = useLazyQuery(ME, { fetchPolicy: "network-only" })
+
+
+const filterOut = (event) => {
+
+
+  setFilter(event.target.innerText)
+  
+  filterbooks({ variables: { genre: event.target.innerText } })
+  getBooks()
+
+}
+
+
+const clearFilter = (event) => {
+
+
+  setFilter(null)
+  getBooks()
+
+}
+
+
+
 
 useEffect(() => {
 
@@ -64,7 +126,10 @@ useEffect(() => {
         { !jsToken ? <button onClick={() => setPage('login')}>Login</button>: null}
 
         { jsToken ? <button onClick={() => {setjsToken(null);setPage('books')}}>Logout</button>: null}
-        
+
+        { jsToken ? <button onClick={() => {setPage('recommended');getUser() }}>Recommended</button> : null}
+
+
       </div>
 
       <Authors
@@ -72,18 +137,25 @@ useEffect(() => {
         result={allauthors} jstoken={jsToken}
       />
   
+ 
       <Books
         show={page === 'books'}
-        result={allbooks}
+        result={allbooks}   filterout={filterOut} clearfilter={clearFilter} filter={filter} fetchedbooks={fetchedBooks}
+        filteredbooks = {filteredBooks}
       />
+   
 
       <NewBook
-        show={page === 'add'}
+        show={page === 'add'} 
       />
 
     <LoginForm
-        show={page === 'login'} setjstoken={setjsToken} setpage={setPage} makelogin={makeLogin}
+        show={page === 'login'} setjstoken={setjsToken} setpage={setPage} makelogin={makeLogin} 
       />
+
+    <Recommended
+        show={page === 'recommended'}   user={user}  />
+   
 
     </div>
   )

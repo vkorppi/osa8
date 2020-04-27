@@ -2,6 +2,7 @@ import React, { useState } from 'react'
 import { gql, useMutation } from '@apollo/client'
 
 
+
 const ALLBOOKS = gql`
 query {
   allBooks { 
@@ -10,9 +11,11 @@ query {
       name
     }
     published
+    genres
   }
 }
 `
+
 const ALLAUTHORS = gql`
 query {
   allAuthors {
@@ -45,11 +48,11 @@ const NewBook = (props) => {
 
 
 
-  const [ createBook ] = useMutation(CREATE_BOOK,{
-	  refetchQueries: [ { query: ALLBOOKS },{ query: ALLAUTHORS } ],
+	  const [ createBook ] = useMutation(CREATE_BOOK,{
+	  refetchQueries: [{ query: ALLAUTHORS } ],
      onError: (error) => {console.log(error.graphQLErrors[0].message) }})
-
-
+      
+  
 
   if (!props.show) {
     return null
@@ -59,6 +62,7 @@ const NewBook = (props) => {
   const submit = async (event) => {
     
     event.preventDefault()
+
 
     createBook({  variables: { title, author, "published":parseInt(published) ,genres } })
     

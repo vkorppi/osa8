@@ -15,7 +15,7 @@ const authLink = setContext((_, { headers }) => {
    
     authorization=  `bearer ${jstoken}`
 
-    console.log(authorization)
+
   }
 
   return { 
