@@ -7,12 +7,14 @@ const Book = require('./model/Book')
 const User = require('./model/User')
 
 const uuid = require('uuid/v1')
+require('dotenv').config()
 
 
 database.set('useFindAndModify', false)
 database.set('useCreateIndex', true)
 
-const databseuri = 'mongodb+srv://dbuser:lr94GxPg7HthnbGU@cluster0-yydjv.mongodb.net/booklist?retryWrites=true&w=majority'
+const databseuri = process.env.DATABASEURI
+
 const secret = 'SecretKey'
 
 database.connect(databseuri, { useNewUrlParser: true, useUnifiedTopology: true })
